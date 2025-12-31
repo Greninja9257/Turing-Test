@@ -391,27 +391,39 @@ function scheduleAIResponse(gameId) {
   const game = games.get(gameId);
   if (!game || game.phase !== GAME_PHASES.CONVERSATION) return;
 
-  const delay = Math.random() * 15000 + 5000;
+  // Wait 8-20 seconds between responses for more natural timing
+  const delay = Math.random() * 12000 + 8000;
 
   setTimeout(async () => {
     if (!games.has(gameId)) return;
     const game = games.get(gameId);
     if (game.phase !== GAME_PHASES.CONVERSATION) return;
 
-    if (Math.random() > 0.6) {
+    // Get messages from other players only (not from AI itself)
+    const humanMessages = game.messages
+      .filter(m => !m.isSystem && m.player !== game.aiPlayerName)
+      .slice(-8);
+
+    // Only respond if there are new human messages since last AI message
+    const lastAIMessageIndex = game.messages.findLastIndex(m => m.player === game.aiPlayerName);
+    const newHumanMessages = lastAIMessageIndex === -1
+      ? humanMessages
+      : game.messages.slice(lastAIMessageIndex + 1).filter(m => !m.isSystem && m.player !== game.aiPlayerName);
+
+    // If no new human messages, or random chance to skip (30%), don't respond
+    if (newHumanMessages.length === 0 || Math.random() > 0.7) {
       scheduleAIResponse(gameId);
       return;
     }
 
-    const recentMessages = game.messages
-      .filter(m => !m.isSystem)
-      .slice(-6)
+    // Format recent conversation (only human messages)
+    const recentMessages = humanMessages
       .map(m => `${m.player}: ${m.text}`)
       .join('\n');
 
     if (recentMessages.trim()) {
       const aiResponse = await callAI(recentMessages, game.aiPersona, game.aiConversationHistory);
-      
+
       game.aiConversationHistory.push(
         { role: "user", content: recentMessages },
         { role: "assistant", content: aiResponse }
