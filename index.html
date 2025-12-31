@@ -357,6 +357,13 @@
       border-color: #8b5cf6;
     }
 
+    .input-row input:disabled {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.5);
+      cursor: not-allowed;
+      color: #fca5a5;
+    }
+
     .input-row button {
       padding: 0.75rem 1.5rem;
       background: #8b5cf6;
@@ -619,6 +626,8 @@
     let socket = null;
     let gameId = null;
     let hasVoted = false;
+    let isTimedOut = false;
+    let timeoutCountdown = null;
 
     // Connect to server
     function connectToServer() {
@@ -675,6 +684,32 @@
         addSystemMessage(`⚠️ ${playerName} disconnected`);
       });
 
+      socket.on('message_blocked', ({ reason, remainingSeconds }) => {
+        isTimedOut = true;
+        const input = document.getElementById('message-input');
+        input.disabled = true;
+        input.placeholder = `Timeout: ${remainingSeconds}s - ${reason}`;
+
+        // Clear any existing countdown
+        if (timeoutCountdown) {
+          clearInterval(timeoutCountdown);
+        }
+
+        // Start countdown
+        let remaining = remainingSeconds;
+        timeoutCountdown = setInterval(() => {
+          remaining--;
+          if (remaining <= 0) {
+            clearInterval(timeoutCountdown);
+            isTimedOut = false;
+            input.disabled = false;
+            input.placeholder = 'Type your message...';
+          } else {
+            input.placeholder = `Timeout: ${remaining}s - No inappropriate language allowed`;
+          }
+        }, 1000);
+      });
+
       socket.on('error', ({ message }) => {
         alert(message);
       });
@@ -700,8 +735,8 @@
     function sendMessage() {
       const input = document.getElementById('message-input');
       const message = input.value.trim();
-      if (!message) return;
-      
+      if (!message || isTimedOut) return;
+
       socket.emit('send_message', { gameId, message });
       input.value = '';
     }
@@ -802,10 +837,36 @@
     }
 
     function returnToMenu() {
-      showScreen('menu-screen');
-      document.getElementById('chat-messages').innerHTML = '';
+      // Reset all game state
       hasVoted = false;
       gameId = null;
+      isTimedOut = false;
+
+      // Clear timeout countdown if active
+      if (timeoutCountdown) {
+        clearInterval(timeoutCountdown);
+        timeoutCountdown = null;
+      }
+
+      // Reset input field
+      const input = document.getElementById('message-input');
+      input.disabled = false;
+      input.placeholder = 'Type your message...';
+      input.value = '';
+
+      // Clear chat messages
+      document.getElementById('chat-messages').innerHTML = '';
+
+      // Reset phase label and show chat input
+      document.getElementById('phase-label').textContent = 'Conversation Phase';
+      document.getElementById('chat-input').classList.remove('hidden');
+
+      // Hide vote cards
+      document.getElementById('vote-card').classList.add('hidden');
+      document.getElementById('vote-confirmation').classList.add('hidden');
+
+      // Show menu screen
+      showScreen('menu-screen');
     }
 
     function escapeHtml(text) {

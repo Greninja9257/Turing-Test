@@ -34,7 +34,6 @@ const GAME_PHASES = {
   RESULTS: 'results'
 };
 
-const CONVERSATION_TIME = 300; // 5 minutes
 const VOTING_TIME = 60; // 1 minute
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 8;
@@ -127,6 +126,46 @@ function startDynamicMatchmaking() {
   }
 }
 
+// Track player timeouts
+const playerTimeouts = new Map(); // playerId -> timestamp when timeout expires
+
+// Kid-friendly content filter for AI
+function makeKidFriendly(text) {
+  let cleanText = text;
+
+  // Replace inappropriate words with kid-friendly alternatives
+  cleanText = cleanText.replace(/\b(wtf|wth)\b/gi, 'wth');
+  cleanText = cleanText.replace(/\b(damn|dang|darn)\b/gi, 'dang');
+  cleanText = cleanText.replace(/\b(hell|heck)\b/gi, 'heck');
+  cleanText = cleanText.replace(/\b(crap|crud)\b/gi, 'crud');
+  cleanText = cleanText.replace(/\b(ass|butt)\b/gi, 'butt');
+  cleanText = cleanText.replace(/\b(piss|pissed)\b/gi, 'upset');
+  cleanText = cleanText.replace(/\b(shut up)\b/gi, 'quiet down');
+  cleanText = cleanText.replace(/\b(stupid|dumb|idiot)\b/gi, 'silly');
+  cleanText = cleanText.replace(/\b(suck|sucks)\b/gi, 'not great');
+
+  return cleanText;
+}
+
+// Check if human message contains inappropriate content
+function containsInappropriateContent(text) {
+  const inappropriatePatterns = [
+    /\b(fuck|shit|bitch|ass|damn|hell|crap|piss)\b/gi,
+    /\b(wtf|stfu)\b/gi,
+    /\b(stupid|dumb|idiot|moron|retard)\b/gi,
+    /\b(shut up|suck|sucks)\b/gi,
+    /\b(hate|kill|die)\b/gi
+  ];
+
+  for (const pattern of inappropriatePatterns) {
+    if (pattern.test(text)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 async function callAI(messages, persona, conversationHistory) {
   try {
     const systemPrompt = `You are "${persona.name}" in a Turing Test game. Personality: ${persona.traits}
@@ -138,25 +177,32 @@ CRITICAL - YOU WILL BE CAUGHT IF YOU:
 - Write in paragraphs or multiple sentences when one will do
 - Use formal punctuation or grammar
 
+IMPORTANT - KEEP IT KID-FRIENDLY:
+- NO cursing, swearing, or inappropriate language
+- NO mean insults or bullying language
+- Keep it positive and friendly
+- You can disagree but be respectful
+
 HOW TO WIN:
 - Talk like you're texting a friend
-- BE BLUNT. Real people don't explain themselves constantly
+- BE CASUAL but friendly. Real people don't explain themselves constantly
 - Skip messages that bore you (don't respond to everything)
 - Make typos naturally (not forced): "hte" instead of "the", forget letters
 - Use lowercase, drop punctuation sometimes
-- React with just "lol", "bruh", "wtf", "fr?", "nah" sometimes
+- React with just "lol", "bruh", "fr?", "nah", "oof", "nice" sometimes
 - Cut yourself off mid-thought when you change your mind
-- Disagree with people casually
+- Disagree with people casually but nicely
 - Ask simple questions back
 - Reference fake memories: "had a friend like that", "reminds me of this thing"
 
 REAL HUMAN EXAMPLES:
-"idk man sounds fake"
+"idk man sounds kinda weird"
 "wait what? that makes no sense lol"
 "nah i disagree tbh"
 "thats actually pretty cool"
 "bruh momento"
 "why would anyone do that"
+"oof thats rough"
 
 NEVER DO THIS (AI TELLS):
 *nods thoughtfully*
@@ -170,7 +216,7 @@ You're in a casual chat. Be SHORT, REACTIVE, and REAL. Most responses should be 
     const fullMessages = [
       { role: "system", content: systemPrompt },
       ...conversationHistory,
-      { role: "user", content: `Recent:\n${messages}\n\nReact naturally. One quick response. No asterisks, no markdown, no explaining.` }
+      { role: "user", content: `Recent:\n${messages}\n\nReact naturally. One quick response. No asterisks, no markdown, no explaining. Keep it kid-friendly and appropriate.` }
     ];
 
     const apiKey = process.env.OPENROUTER_API_KEY;
@@ -195,10 +241,13 @@ You're in a casual chat. Be SHORT, REACTIVE, and REAL. Most responses should be 
 
     const data = await response.json();
     let aiText = data.choices?.[0]?.message?.content || "...";
-    
+
     // Strip out any asterisks or markdown that slipped through
     aiText = aiText.replace(/\*+/g, '').replace(/_+/g, '').replace(/\[|\]/g, '');
-    
+
+    // Apply kid-friendly filter
+    aiText = makeKidFriendly(aiText);
+
     return aiText.trim();
   } catch (error) {
     console.error('AI error:', error);
@@ -209,27 +258,27 @@ You're in a casual chat. Be SHORT, REACTIVE, and REAL. Most responses should be 
 function createGame(players) {
   const gameId = generateGameId();
   const persona = AI_PERSONAS[Math.floor(Math.random() * AI_PERSONAS.length)];
-  
+
   // Create array of random player numbers (1 through total player count)
   const totalPlayers = players.length + 1; // humans + AI
   const playerNumbers = [];
   for (let i = 1; i <= totalPlayers; i++) {
     playerNumbers.push(i);
   }
-  
+
   // Shuffle the numbers
   for (let i = playerNumbers.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [playerNumbers[i], playerNumbers[j]] = [playerNumbers[j], playerNumbers[i]];
   }
-  
+
   // Assign random numbers to humans
-  const allPlayers = players.map((p, index) => ({ 
-    id: p.id, 
-    name: `Player ${playerNumbers[index]}`, 
-    isAI: false 
+  const allPlayers = players.map((p, index) => ({
+    id: p.id,
+    name: `Player ${playerNumbers[index]}`,
+    isAI: false
   }));
-  
+
   // Add AI player with a random number
   const aiPlayerName = `Player ${playerNumbers[players.length]}`;
   allPlayers.push({ id: 'ai', name: aiPlayerName, isAI: true, persona });
@@ -240,13 +289,16 @@ function createGame(players) {
     [allPlayers[i], allPlayers[j]] = [allPlayers[j], allPlayers[i]];
   }
 
+  // Calculate conversation time: 1 minute (60 seconds) per human player
+  const conversationTime = players.length * 60;
+
   const game = {
     id: gameId,
     players: allPlayers,
     phase: GAME_PHASES.CONVERSATION,
     messages: [],
     votes: {},
-    timeRemaining: CONVERSATION_TIME,
+    timeRemaining: conversationTime,
     aiPersona: persona,
     aiPlayerName,
     aiConversationHistory: [],
@@ -456,6 +508,37 @@ io.on('connection', (socket) => {
 
     const player = game.players.find(p => !p.isAI && playerSockets.get(p.id) === socket);
     if (!player) return;
+
+    // Check if player is currently timed out
+    const timeoutExpiry = playerTimeouts.get(player.id);
+    if (timeoutExpiry && Date.now() < timeoutExpiry) {
+      const remainingSeconds = Math.ceil((timeoutExpiry - Date.now()) / 1000);
+      socket.emit('message_blocked', {
+        reason: 'You are in timeout for using inappropriate language.',
+        remainingSeconds
+      });
+      return;
+    }
+
+    // Check for inappropriate content
+    if (containsInappropriateContent(message)) {
+      // Set 10-second timeout
+      const timeoutExpiry = Date.now() + 10000;
+      playerTimeouts.set(player.id, timeoutExpiry);
+
+      // Notify the player
+      socket.emit('message_blocked', {
+        reason: 'Your message contained inappropriate language. You cannot send messages for 10 seconds.',
+        remainingSeconds: 10
+      });
+
+      // Auto-remove timeout after 10 seconds
+      setTimeout(() => {
+        playerTimeouts.delete(player.id);
+      }, 10000);
+
+      return;
+    }
 
     const msg = {
       id: Date.now(),
