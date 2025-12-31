@@ -133,8 +133,10 @@ const playerTimeouts = new Map(); // playerId -> timestamp when timeout expires
 function makeKidFriendly(text) {
   let cleanText = text;
 
-  // Replace inappropriate words with kid-friendly alternatives
+  // Replace inappropriate words and acronyms with kid-friendly alternatives
+  cleanText = cleanText.replace(/\b(lmao|lmfao)\b/gi, 'lol');
   cleanText = cleanText.replace(/\b(wtf|wth)\b/gi, 'wth');
+  cleanText = cleanText.replace(/\b(omg)\b/gi, 'oh wow');
   cleanText = cleanText.replace(/\b(damn|dang|darn)\b/gi, 'dang');
   cleanText = cleanText.replace(/\b(hell|heck)\b/gi, 'heck');
   cleanText = cleanText.replace(/\b(crap|crud)\b/gi, 'crud');
@@ -151,7 +153,7 @@ function makeKidFriendly(text) {
 function containsInappropriateContent(text) {
   const inappropriatePatterns = [
     /\b(fuck|shit|bitch|ass|damn|hell|crap|piss)\b/gi,
-    /\b(wtf|stfu)\b/gi,
+    /\b(lmao|lmfao|wtf|stfu|omg)\b/gi,
     /\b(stupid|dumb|idiot|moron|retard)\b/gi,
     /\b(shut up|suck|sucks)\b/gi,
     /\b(hate|kill|die)\b/gi
@@ -179,6 +181,7 @@ CRITICAL - YOU WILL BE CAUGHT IF YOU:
 
 IMPORTANT - KEEP IT KID-FRIENDLY:
 - NO cursing, swearing, or inappropriate language
+- DO NOT use: lmao, lmfao, wtf, omg, damn, hell, crap, or any curse words
 - NO mean insults or bullying language
 - Keep it positive and friendly
 - You can disagree but be respectful
@@ -189,7 +192,7 @@ HOW TO WIN:
 - Skip messages that bore you (don't respond to everything)
 - Make typos naturally (not forced): "hte" instead of "the", forget letters
 - Use lowercase, drop punctuation sometimes
-- React with just "lol", "bruh", "fr?", "nah", "oof", "nice" sometimes
+- React with just "lol", "haha", "bruh", "fr?", "nah", "oof", "nice", "yikes" sometimes
 - Cut yourself off mid-thought when you change your mind
 - Disagree with people casually but nicely
 - Ask simple questions back
