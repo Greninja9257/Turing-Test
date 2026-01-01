@@ -861,6 +861,10 @@
     let isSpectating = false;
     let currentLobbyId = null;
 
+    // Rate limiting variables
+    let lastMessageTime = 0;
+    let rateLimitCountdown = null;
+
     // Connect to server
     function connectToServer() {
       // Auto-detect server URL (works for both local and Replit)
@@ -1071,11 +1075,53 @@
     function sendMessage() {
       const input = document.getElementById('message-input');
       const message = input.value.trim();
-      if (!message || isTimedOut) return;
+      if (!message) return;
 
+      const now = Date.now();
+
+      // Check if 1 second has passed since last message
+      if (now - lastMessageTime < 1000) {
+        // Apply 1 second timeout
+        if (!isTimedOut) {
+          isTimedOut = true;
+          input.disabled = true;
+          input.value = '';
+
+          // Clear any existing countdown
+          if (rateLimitCountdown) {
+            clearInterval(rateLimitCountdown);
+          }
+
+          // Calculate remaining time
+          const remainingMs = 1000 - (now - lastMessageTime);
+          let remaining = Math.ceil(remainingMs / 1000);
+
+          input.value = `Timeout: ${remaining}s - Rate limited`;
+
+          // Start countdown
+          rateLimitCountdown = setInterval(() => {
+            remaining--;
+            if (remaining <= 0) {
+              clearInterval(rateLimitCountdown);
+              rateLimitCountdown = null;
+              isTimedOut = false;
+              input.disabled = false;
+              input.value = '';
+              input.placeholder = 'Type your message...';
+            } else {
+              input.value = `Timeout: ${remaining}s - Rate limited`;
+            }
+          }, 1000);
+        }
+        return;
+      }
+
+      // Message is allowed - send it
       socket.emit('send_message', { gameId, message });
       input.value = '';
+      lastMessageTime = now;
     }
+
 
     function castVote(playerName) {
       if (hasVoted) return;
@@ -1233,6 +1279,15 @@
         clearInterval(timeoutCountdown);
         timeoutCountdown = null;
       }
+
+      // Clear rate limit countdown if active
+      if (rateLimitCountdown) {
+        clearInterval(rateLimitCountdown);
+        rateLimitCountdown = null;
+      }
+
+      // Reset rate limiting state
+      lastMessageTime = 0;
 
       // Reset input field
       const input = document.getElementById('message-input');
