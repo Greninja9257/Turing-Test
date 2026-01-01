@@ -734,6 +734,26 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // Check if player is already in this lobby
+    const alreadyInLobby = lobby.some(p => p.socketId === socket.id);
+    if (alreadyInLobby) {
+      socket.emit('error', { message: 'Already in this lobby' });
+      return;
+    }
+
+    // Check if player is already in queue
+    const alreadyInQueue = waitingQueue.some(p => p.socketId === socket.id);
+    if (alreadyInQueue) {
+      socket.emit('error', { message: 'Already in queue' });
+      return;
+    }
+
+    // Check if lobby is full
+    if (lobby.length >= MAX_PLAYERS - 1) {
+      socket.emit('error', { message: 'Lobby is full' });
+      return;
+    }
+
     const playerId = generatePlayerId();
     const player = {
       id: playerId,

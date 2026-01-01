@@ -213,13 +213,11 @@
     }
 
     .timer-label {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
+      text-align: center;
       color: #c084fc;
       font-size: 0.9rem;
       margin-bottom: 0.5rem;
+      letter-spacing: 0.05em;
     }
 
     .phase-label {
@@ -229,12 +227,10 @@
     }
 
     .players-card h3 {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
       color: #c084fc;
       font-size: 0.9rem;
       margin-bottom: 1rem;
+      letter-spacing: 0.05em;
     }
 
     .player-item {
@@ -258,9 +254,6 @@
     }
 
     .chat-header h3 {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
       font-weight: bold;
       letter-spacing: 0.05em;
     }
@@ -312,7 +305,7 @@
     .message-header {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.75rem;
       margin-bottom: 0.5rem;
     }
 
@@ -493,12 +486,22 @@
     }
 
     .pulse {
+      width: 8px;
+      height: 8px;
+      background: #10b981;
+      border-radius: 50%;
       animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
 
     @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
+      0%, 100% {
+        opacity: 1;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      }
+      50% {
+        opacity: 0.8;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0);
+      }
     }
 
     .games-browser {
@@ -597,16 +600,11 @@
   <div class="grid-bg">
     <div class="container">
       <!-- Header -->
-      <div class="header">
+      <div class="header" id="main-header">
         <h1 class="title-font glow">THE TURING TEST</h1>
         <p>FIND THE AI AMONG YOU</p>
-        <div class="subtitle">
-          <span>⚡</span>
-          <span>POWERED BY MISTRAL AI</span>
-          <span>⚡</span>
-        </div>
         <div class="player-count-badge border-glow">
-          <span class="pulse">🟢</span>
+          <span class="pulse"></span>
           <span id="online-players">0</span>
           <span>players online</span>
         </div>
@@ -620,12 +618,7 @@
           You will be assigned a player number automatically
         </p>
 
-        <button class="btn btn-primary" onclick="joinQueue()">JOIN QUEUE</button>
-
-        <div class="checkbox-container" onclick="toggleAutoPlay()">
-          <input type="checkbox" id="autoplay-checkbox">
-          <label for="autoplay-checkbox">🔄 Auto-play (automatically join next game)</label>
-        </div>
+        <button class="btn btn-primary" onclick="joinGame()">JOIN GAME</button>
 
         <div class="info-box">
           <h4>ACTIVE GAMES:</h4>
@@ -637,12 +630,12 @@
         <div class="info-box">
           <h4>HOW TO PLAY:</h4>
           <ul>
-            <li>• Join the queue or spectate an active game</li>
-            <li>• You'll be assigned Player 1, Player 2, etc.</li>
-            <li>• One AI will join your game as a player</li>
-            <li>• Chat naturally - no topics, just conversation</li>
-            <li>• At the end of the game, vote who you think is the AI</li>
-            <li>• Humans win if they correctly identify the AI</li>
+            <li>Click "JOIN GAME" to play or spectate an active game</li>
+            <li>You'll be assigned Player 1, Player 2, etc.</li>
+            <li>One AI will join your game as a player</li>
+            <li>Chat naturally - no topics, just conversation</li>
+            <li>At the end of the game, vote who you think is the AI</li>
+            <li>Humans win if they correctly identify the AI</li>
           </ul>
         </div>
       </div>
@@ -676,7 +669,7 @@
       <!-- Spectator Screen -->
       <div id="spectator-screen" class="hidden">
         <div style="text-align: center; margin-bottom: 1.5rem;">
-          <span class="spectator-badge">👁️ SPECTATING</span>
+          <span class="spectator-badge">SPECTATING</span>
           <button class="btn btn-secondary" onclick="returnToMenu()" style="margin-top: 1rem; max-width: 300px; margin-left: auto; margin-right: auto;">LEAVE</button>
         </div>
         <div class="game-grid">
@@ -685,7 +678,6 @@
             <!-- Timer -->
             <div class="card border-glow timer-card">
               <div class="timer-label">
-                <span>⏰</span>
                 <span>TIME REMAINING</span>
               </div>
               <div class="timer-display title-font glow" id="spectator-timer-display">5:00</div>
@@ -695,7 +687,6 @@
             <!-- Players -->
             <div class="card border-glow players-card">
               <h3>
-                <span>👥</span>
                 <span>PLAYERS (<span id="spectator-player-count">0</span>)</span>
               </h3>
               <div id="spectator-players-list"></div>
@@ -706,7 +697,6 @@
           <div class="card border-glow chat-container">
             <div class="chat-header">
               <h3>
-                <span>💬</span>
                 <span>CHAT ROOM</span>
               </h3>
               <p class="chat-subtitle">Spectating - read only</p>
@@ -724,7 +714,6 @@
             <!-- Timer -->
             <div class="card border-glow timer-card" id="timer-card">
               <div class="timer-label">
-                <span>⏰</span>
                 <span>TIME REMAINING</span>
               </div>
               <div class="timer-display title-font glow" id="timer-display">5:00</div>
@@ -734,7 +723,6 @@
             <!-- Players -->
             <div class="card border-glow players-card">
               <h3>
-                <span>👥</span>
                 <span>PLAYERS (<span id="player-count">0</span>)</span>
               </h3>
               <div id="players-list"></div>
@@ -748,7 +736,7 @@
 
             <!-- Vote Confirmation -->
             <div class="card border-glow hidden" id="vote-confirmation" style="text-align: center;">
-              <p style="color: #c084fc;">✓ Vote Cast</p>
+              <p style="color: #c084fc;">Vote Cast</p>
               <p style="font-size: 0.9rem; color: #a78bfa; margin-top: 0.5rem;">Waiting for others...</p>
             </div>
           </div>
@@ -757,7 +745,6 @@
           <div class="card border-glow chat-container">
             <div class="chat-header">
               <h3>
-                <span>💬</span>
                 <span>CHAT ROOM</span>
               </h3>
               <p class="chat-subtitle">Free conversation - no rules</p>
@@ -767,7 +754,7 @@
               <div class="input-row">
                 <input type="text" id="message-input" placeholder="Type your message...">
                 <button onclick="sendMessage()">
-                  <span>➤</span>
+                  <span>Send</span>
                 </button>
               </div>
             </div>
@@ -778,7 +765,7 @@
       <!-- Results Screen -->
       <div id="results-screen" class="card border-glow hidden" style="max-width: 700px; margin: 0 auto;">
         <div class="results-card">
-          <h2 class="results-title title-font glow" id="results-title">🎉 HUMANS WIN!</h2>
+          <h2 class="results-title title-font glow" id="results-title">HUMANS WIN!</h2>
 
           <div class="ai-reveal">
             <p>The AI was:</p>
@@ -788,11 +775,6 @@
           <div class="vote-results">
             <h3>Vote Results:</h3>
             <div id="vote-results-list"></div>
-          </div>
-
-          <div id="autoplay-status" class="hidden" style="margin-top: 2rem; padding: 1rem; background: rgba(139, 92, 246, 0.2); border: 1px solid rgba(139, 92, 246, 0.5); border-radius: 0.5rem;">
-            <p style="color: #c084fc; font-size: 1rem; margin-bottom: 0.5rem;">🔄 Auto-play enabled</p>
-            <p style="color: #a78bfa; font-size: 0.9rem;">Joining next game in <span id="autoplay-countdown">10</span>s...</p>
           </div>
 
           <button class="btn btn-primary" onclick="returnToMenu()" style="margin-top: 2rem;">RETURN TO MENU</button>
@@ -807,8 +789,6 @@
     let hasVoted = false;
     let isTimedOut = false;
     let timeoutCountdown = null;
-    let autoPlayEnabled = false;
-    let autoPlayTimer = null;
     let currentGamesList = [];
     let isSpectating = false;
     let currentLobbyId = null;
@@ -877,7 +857,7 @@
         updatePlayers(players);
         updateTimer(timeRemaining);
         showScreen('game-screen');
-        addSystemMessage('🎮 Game Started! One of you is an AI. Chat naturally. Good luck!');
+        addSystemMessage('Game Started! One of you is an AI. Chat naturally. Good luck!');
       });
 
       socket.on('new_message', (message) => {
@@ -911,27 +891,10 @@
 
       socket.on('game_ended', ({ winner, aiPlayer, votes, isTied }) => {
         showResults(winner, aiPlayer, votes, isTied);
-
-        // Handle autoplay
-        if (autoPlayEnabled && !isSpectating) {
-          document.getElementById('autoplay-status').classList.remove('hidden');
-          let countdown = 10;
-          document.getElementById('autoplay-countdown').textContent = countdown;
-
-          autoPlayTimer = setInterval(() => {
-            countdown--;
-            document.getElementById('autoplay-countdown').textContent = countdown;
-
-            if (countdown <= 0) {
-              clearInterval(autoPlayTimer);
-              joinQueue();
-            }
-          }, 1000);
-        }
       });
 
       socket.on('player_disconnected', ({ playerName }) => {
-        addSystemMessage(`⚠️ ${playerName} disconnected`);
+        addSystemMessage(`${playerName} disconnected`);
       });
 
       socket.on('message_blocked', ({ reason, remainingSeconds }) => {
@@ -971,11 +934,20 @@
         document.getElementById(id).classList.add('hidden');
       });
       document.getElementById(screenId).classList.remove('hidden');
+
+      // Hide header during game and spectator mode
+      const header = document.getElementById('main-header');
+      if (screenId === 'game-screen' || screenId === 'spectator-screen') {
+        header.classList.add('hidden');
+      } else {
+        header.classList.remove('hidden');
+      }
     }
 
-    function toggleAutoPlay() {
-      autoPlayEnabled = !autoPlayEnabled;
-      document.getElementById('autoplay-checkbox').checked = autoPlayEnabled;
+    // Smart join function - decides whether to create new game or join existing
+    function joinGame() {
+      // Simply join the queue - server handles smart matchmaking
+      socket.emit('join_queue', { playerName: null });
     }
 
     function updateGamesBrowser(games) {
@@ -991,8 +963,8 @@
         const gameCard = document.createElement('div');
         gameCard.className = 'game-card';
 
-        const phaseText = game.phase === 'conversation' ? '💬 Chatting' :
-                         game.phase === 'voting' ? '🗳️ Voting' : '📊 Results';
+        const phaseText = game.phase === 'conversation' ? 'Chatting' :
+                         game.phase === 'voting' ? 'Voting' : 'Results';
 
         const mins = Math.floor(game.timeRemaining / 60);
         const secs = game.timeRemaining % 60;
@@ -1004,16 +976,13 @@
             <span style="color: #a78bfa; font-size: 0.85rem;">${phaseText}</span>
           </div>
           <div class="game-card-stats">
-            <span>👥 ${game.playerCount} players</span>
-            <span>👁️ ${game.spectatorCount} watching</span>
-            <span>⏰ ${timeText}</span>
+            <span>${game.playerCount} players</span>
+            <span>${game.spectatorCount} watching</span>
+            <span>${timeText}</span>
           </div>
-          <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
-            <button onclick="spectateGame('${game.id}')" style="flex: 1; padding: 0.5rem; background: rgba(251, 191, 36, 0.2); border: 1px solid rgba(251, 191, 36, 0.5); border-radius: 0.25rem; color: #fcd34d; cursor: pointer; font-size: 0.85rem;">
-              👁️ Spectate
-            </button>
-            <button onclick="joinLobby('${game.id}')" style="flex: 1; padding: 0.5rem; background: rgba(139, 92, 246, 0.2); border: 1px solid rgba(139, 92, 246, 0.5); border-radius: 0.25rem; color: #c084fc; cursor: pointer; font-size: 0.85rem;">
-              ⏭️ Join Next (${game.lobbyCount})
+          <div style="margin-top: 0.75rem;">
+            <button onclick="spectateGame('${game.id}')" style="width: 100%; padding: 0.5rem; background: rgba(251, 191, 36, 0.2); border: 1px solid rgba(251, 191, 36, 0.5); border-radius: 0.25rem; color: #fcd34d; cursor: pointer; font-size: 0.85rem;">
+              Spectate
             </button>
           </div>
         `;
@@ -1024,14 +993,6 @@
 
     function spectateGame(gameId) {
       socket.emit('spectate_game', { gameId });
-    }
-
-    function joinLobby(gameId) {
-      socket.emit('join_lobby', { gameId });
-    }
-
-    function joinQueue() {
-      socket.emit('join_queue', { playerName: null });
     }
 
     function leaveQueue() {
@@ -1081,7 +1042,7 @@
         const btn = document.createElement('button');
         btn.className = 'vote-btn';
         btn.onclick = () => castVote(player.name);
-        btn.innerHTML = `<span>${player.name}</span><span>🗳️</span>`;
+        btn.innerHTML = `<span>${player.name}</span><span>Vote</span>`;
         container.appendChild(btn);
       });
     }
@@ -1122,24 +1083,24 @@
 
     function showResults(winner, aiPlayer, votes, isTied) {
       const title = document.getElementById('results-title');
-      title.textContent = winner === 'humans' ? '🎉 HUMANS WIN!' : '🤖 AI WINS!';
-      
+      title.textContent = winner === 'humans' ? 'HUMANS WIN!' : 'AI WINS!';
+
       document.getElementById('ai-player-name').textContent = aiPlayer;
-      
+
       const resultsList = document.getElementById('vote-results-list');
       resultsList.innerHTML = '';
-      
+
       const sortedVotes = Object.entries(votes).sort((a, b) => b[1] - a[1]);
       sortedVotes.forEach(([player, count]) => {
         const div = document.createElement('div');
         div.className = 'vote-result-item';
         div.innerHTML = `
-          <span>${player} ${player === aiPlayer ? '🤖' : ''}</span>
+          <span>${player} ${player === aiPlayer ? '[AI]' : ''}</span>
           <span style="color: #c084fc;">${count} vote${count !== 1 ? 's' : ''}</span>
         `;
         resultsList.appendChild(div);
       });
-      
+
       showScreen('results-screen');
     }
 
@@ -1198,13 +1159,6 @@
       isTimedOut = false;
       isSpectating = false;
       currentLobbyId = null;
-
-      // Clear autoplay timer
-      if (autoPlayTimer) {
-        clearInterval(autoPlayTimer);
-        autoPlayTimer = null;
-      }
-      document.getElementById('autoplay-status').classList.add('hidden');
 
       // Clear timeout countdown if active
       if (timeoutCountdown) {
