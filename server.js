@@ -20,6 +20,7 @@ const io = new Server(server, {
 const games = new Map();
 const lobbies = new Map(); // lobbies with players waiting for next game
 const spectators = new Map(); // gameId -> Set of spectator socket IDs
+const gameTimers = new Map(); // gameId -> interval ID
 const waitingQueue = [];
 const playerSockets = new Map();
 const connectedSockets = new Set(); // Track all connected sockets for player count
@@ -373,10 +374,16 @@ function tryMatchmaking() {
 }
 
 function startGameTimer(gameId) {
+  // Clear any existing timer for this game
+  if (gameTimers.has(gameId)) {
+    clearInterval(gameTimers.get(gameId));
+  }
+
   const interval = setInterval(() => {
     const game = games.get(gameId);
     if (!game) {
       clearInterval(interval);
+      gameTimers.delete(gameId);
       return;
     }
 
@@ -393,11 +400,15 @@ function startGameTimer(gameId) {
       } else if (game.phase === GAME_PHASES.VOTING) {
         endGame(gameId);
         clearInterval(interval);
+        gameTimers.delete(gameId);
+        return;
       }
     }
 
     io.to(gameId).emit('timer_update', { timeRemaining: game.timeRemaining });
   }, 1000);
+
+  gameTimers.set(gameId, interval);
 }
 
 function scheduleAIResponse(gameId) {
@@ -486,6 +497,12 @@ function endGame(gameId) {
     votes: voteCounts,
     isTied
   });
+
+  // Clear timer for this game
+  if (gameTimers.has(gameId)) {
+    clearInterval(gameTimers.get(gameId));
+    gameTimers.delete(gameId);
+  }
 
   // Start next game if there are players in the lobby
   setTimeout(() => {
@@ -687,13 +704,16 @@ io.on('connection', (socket) => {
 
     game.votes[player.id] = votedPlayer;
 
-    io.to(gameId).emit('vote_cast', { 
+    const connectedHumanPlayers = game.players.filter(p => !p.isAI && !p.disconnected);
+    const votesRemaining = connectedHumanPlayers.length - Object.keys(game.votes).length;
+
+    io.to(gameId).emit('vote_cast', {
       voter: player.name,
-      votesRemaining: game.players.filter(p => !p.isAI).length - Object.keys(game.votes).length
+      votesRemaining: votesRemaining
     });
 
-    const humanPlayers = game.players.filter(p => !p.isAI);
-    if (Object.keys(game.votes).length >= humanPlayers.length) {
+    // Check if all connected players have voted
+    if (Object.keys(game.votes).length >= connectedHumanPlayers.length) {
       endGame(gameId);
     }
   });
@@ -829,7 +849,24 @@ io.on('connection', (socket) => {
     games.forEach((game, gameId) => {
       const player = game.players.find(p => !p.isAI && playerSockets.get(p.id) === socket);
       if (player) {
+        // Mark player as disconnected
+        player.disconnected = true;
+        playerSockets.delete(player.id);
+
         io.to(gameId).emit('player_disconnected', { playerName: player.name });
+
+        // Check if all remaining connected players have voted
+        if (game.phase === GAME_PHASES.VOTING) {
+          const connectedHumanPlayers = game.players.filter(p => !p.isAI && !p.disconnected);
+          const connectedVotes = Object.keys(game.votes).filter(playerId => {
+            const votingPlayer = game.players.find(p => p.id === playerId);
+            return votingPlayer && !votingPlayer.disconnected;
+          });
+
+          if (connectedVotes.length >= connectedHumanPlayers.length) {
+            endGame(gameId);
+          }
+        }
       }
     });
 
