@@ -18,8 +18,11 @@ const io = new Server(server, {
 
 // Game state
 const games = new Map();
+const lobbies = new Map(); // lobbies with players waiting for next game
+const spectators = new Map(); // gameId -> Set of spectator socket IDs
 const waitingQueue = [];
 const playerSockets = new Map();
+const connectedSockets = new Set(); // Track all connected sockets for player count
 
 // Dynamic matchmaking settings
 let recentJoins = []; // Timestamps of recent queue joins
@@ -314,6 +317,8 @@ function createGame(players) {
   };
 
   games.set(gameId, game);
+  lobbies.set(gameId, []); // Initialize empty lobby for this game
+  spectators.set(gameId, new Set()); // Initialize empty spectator set
 
   game.messages.push({
     id: Date.now(),
@@ -322,6 +327,9 @@ function createGame(players) {
     isSystem: true,
     timestamp: Date.now()
   });
+
+  // Broadcast updated games list
+  io.emit('games_list', { games: getActiveGames() });
 
   return game;
 }
@@ -479,13 +487,83 @@ function endGame(gameId) {
     isTied
   });
 
+  // Start next game if there are players in the lobby
   setTimeout(() => {
+    const lobby = lobbies.get(gameId);
+    if (lobby && lobby.length >= MIN_PLAYERS) {
+      const playersForGame = lobby.splice(0, Math.min(MAX_PLAYERS - 1, lobby.length));
+      const newGame = createGame(playersForGame);
+
+      playersForGame.forEach(player => {
+        const socket = playerSockets.get(player.id);
+        if (socket) {
+          socket.emit('game_started', {
+            gameId: newGame.id,
+            players: newGame.players.map(p => ({ name: p.name })),
+            phase: newGame.phase,
+            timeRemaining: newGame.timeRemaining
+          });
+          socket.join(newGame.id);
+          player.gameId = newGame.id;
+        }
+      });
+
+      startGameTimer(newGame.id);
+      scheduleAIResponse(newGame.id);
+    }
+
     games.delete(gameId);
+    lobbies.delete(gameId);
+    spectators.delete(gameId);
+    io.emit('games_list', { games: getActiveGames() });
   }, 30000);
+}
+
+// Broadcast player count to all clients
+function broadcastPlayerCount() {
+  io.emit('player_count_update', { count: connectedSockets.size });
+}
+
+// Get most full active lobby
+function getMostFullLobby() {
+  let mostFullLobby = null;
+  let maxPlayers = 0;
+
+  lobbies.forEach((lobbyPlayers, gameId) => {
+    if (lobbyPlayers.length > maxPlayers && lobbyPlayers.length < MAX_PLAYERS - 1) {
+      maxPlayers = lobbyPlayers.length;
+      mostFullLobby = gameId;
+    }
+  });
+
+  return mostFullLobby;
+}
+
+// Get active games list for lobby browser
+function getActiveGames() {
+  const activeGames = [];
+  games.forEach((game, gameId) => {
+    const lobby = lobbies.get(gameId) || [];
+    const spectatorCount = (spectators.get(gameId) || new Set()).size;
+    activeGames.push({
+      id: gameId,
+      playerCount: game.players.length,
+      phase: game.phase,
+      timeRemaining: game.timeRemaining,
+      lobbyCount: lobby.length,
+      spectatorCount: spectatorCount
+    });
+  });
+  return activeGames;
 }
 
 io.on('connection', (socket) => {
   console.log('Player connected:', socket.id);
+  connectedSockets.add(socket.id);
+  broadcastPlayerCount();
+
+  // Send initial game list
+  socket.emit('games_list', { games: getActiveGames() });
 
   socket.on('join_queue', ({ playerName }) => {
     const existingPlayer = waitingQueue.find(p => p.socketId === socket.id);
@@ -495,6 +573,35 @@ io.on('connection', (socket) => {
     }
 
     const playerId = generatePlayerId();
+
+    // Check for most full lobby first
+    const mostFullLobby = getMostFullLobby();
+    if (mostFullLobby) {
+      const lobby = lobbies.get(mostFullLobby);
+      const player = {
+        id: playerId,
+        socketId: socket.id
+      };
+      lobby.push(player);
+      playerSockets.set(playerId, socket);
+
+      socket.emit('joined_lobby', {
+        gameId: mostFullLobby,
+        lobbySize: lobby.length,
+        message: 'Joined lobby - you will join the next game!'
+      });
+
+      // Notify others in lobby
+      lobby.forEach(p => {
+        const playerSocket = playerSockets.get(p.id);
+        if (playerSocket) {
+          playerSocket.emit('lobby_update', { lobbySize: lobby.length });
+        }
+      });
+
+      return;
+    }
+
     const player = {
       id: playerId,
       socketId: socket.id
@@ -502,13 +609,13 @@ io.on('connection', (socket) => {
 
     waitingQueue.push(player);
     playerSockets.set(playerId, socket);
-    
+
     // Track this join for rate calculation
     recentJoins.push(Date.now());
 
-    socket.emit('queue_joined', { 
+    socket.emit('queue_joined', {
       position: waitingQueue.length,
-      queueSize: waitingQueue.length 
+      queueSize: waitingQueue.length
     });
 
     waitingQueue.forEach(p => {
@@ -591,6 +698,68 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('spectate_game', ({ gameId }) => {
+    const game = games.get(gameId);
+    if (!game) {
+      socket.emit('error', { message: 'Game not found' });
+      return;
+    }
+
+    socket.join(gameId);
+    const spectatorSet = spectators.get(gameId);
+    spectatorSet.add(socket.id);
+
+    // Send current game state
+    socket.emit('spectating_game', {
+      gameId: gameId,
+      players: game.players.map(p => ({ name: p.name })),
+      phase: game.phase,
+      timeRemaining: game.timeRemaining,
+      messages: game.messages
+    });
+
+    io.emit('games_list', { games: getActiveGames() });
+  });
+
+  socket.on('join_lobby', ({ gameId }) => {
+    const game = games.get(gameId);
+    if (!game) {
+      socket.emit('error', { message: 'Game not found' });
+      return;
+    }
+
+    const lobby = lobbies.get(gameId);
+    if (!lobby) {
+      socket.emit('error', { message: 'Lobby not available' });
+      return;
+    }
+
+    const playerId = generatePlayerId();
+    const player = {
+      id: playerId,
+      socketId: socket.id
+    };
+
+    lobby.push(player);
+    playerSockets.set(playerId, socket);
+
+    socket.emit('joined_lobby', {
+      gameId: gameId,
+      lobbySize: lobby.length,
+      message: 'Joined lobby - you will join the next game!'
+    });
+
+    // Notify others in lobby
+    lobby.forEach(p => {
+      const playerSocket = playerSockets.get(p.id);
+      if (playerSocket && playerSocket !== socket) {
+        playerSocket.emit('lobby_update', { lobbySize: lobby.length });
+      }
+    });
+
+    io.emit('games_list', { games: getActiveGames() });
+  });
+
   socket.on('leave_queue', () => {
     const index = waitingQueue.findIndex(p => p.socketId === socket.id);
     if (index !== -1) {
@@ -609,7 +778,10 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('Player disconnected:', socket.id);
-    
+
+    connectedSockets.delete(socket.id);
+    broadcastPlayerCount();
+
     const queueIndex = waitingQueue.findIndex(p => p.socketId === socket.id);
     if (queueIndex !== -1) {
       const player = waitingQueue[queueIndex];
@@ -617,12 +789,31 @@ io.on('connection', (socket) => {
       playerSockets.delete(player.id);
     }
 
+    // Remove from lobbies
+    lobbies.forEach((lobby, gameId) => {
+      const lobbyIndex = lobby.findIndex(p => p.socketId === socket.id);
+      if (lobbyIndex !== -1) {
+        const player = lobby[lobbyIndex];
+        lobby.splice(lobbyIndex, 1);
+        playerSockets.delete(player.id);
+      }
+    });
+
+    // Remove from spectators
+    spectators.forEach((spectatorSet, gameId) => {
+      if (spectatorSet.has(socket.id)) {
+        spectatorSet.delete(socket.id);
+      }
+    });
+
     games.forEach((game, gameId) => {
       const player = game.players.find(p => !p.isAI && playerSockets.get(p.id) === socket);
       if (player) {
         io.to(gameId).emit('player_disconnected', { playerName: player.name });
       }
     });
+
+    io.emit('games_list', { games: getActiveGames() });
   });
 });
 

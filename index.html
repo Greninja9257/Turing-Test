@@ -480,6 +480,107 @@
       display: none;
     }
 
+    .player-count-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(139, 92, 246, 0.2);
+      border: 1px solid rgba(139, 92, 246, 0.5);
+      border-radius: 2rem;
+      padding: 0.5rem 1rem;
+      margin-top: 1rem;
+      font-size: 1rem;
+    }
+
+    .pulse {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .games-browser {
+      margin-top: 2rem;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .game-card {
+      background: rgba(30, 41, 59, 0.3);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .game-card:hover {
+      background: rgba(30, 41, 59, 0.5);
+      border-color: #8b5cf6;
+      transform: translateX(4px);
+    }
+
+    .game-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .game-card-title {
+      font-weight: bold;
+      color: #c084fc;
+      font-size: 0.95rem;
+    }
+
+    .game-card-stats {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.85rem;
+      color: #a78bfa;
+    }
+
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      padding: 0.75rem;
+      background: rgba(107, 33, 168, 0.2);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      border-radius: 0.5rem;
+      cursor: pointer;
+    }
+
+    .checkbox-container input[type="checkbox"] {
+      width: 1.2rem;
+      height: 1.2rem;
+      cursor: pointer;
+    }
+
+    .checkbox-container label {
+      cursor: pointer;
+      color: #e9d5ff;
+      font-size: 0.95rem;
+    }
+
+    .spectator-badge {
+      background: rgba(251, 191, 36, 0.2);
+      border: 1px solid rgba(251, 191, 36, 0.5);
+      padding: 0.25rem 0.75rem;
+      border-radius: 1rem;
+      font-size: 0.8rem;
+      color: #fcd34d;
+    }
+
+    .lobby-waiting {
+      text-align: center;
+      padding: 2rem;
+    }
+
     @media (max-width: 768px) {
       .game-grid {
         grid-template-columns: 1fr;
@@ -504,22 +605,39 @@
           <span>POWERED BY MISTRAL AI</span>
           <span>⚡</span>
         </div>
+        <div class="player-count-badge border-glow">
+          <span class="pulse">🟢</span>
+          <span id="online-players">0</span>
+          <span>players online</span>
+        </div>
       </div>
 
       <!-- Menu Screen -->
-      <div id="menu-screen" class="card border-glow" style="max-width: 600px; margin: 0 auto;">
+      <div id="menu-screen" class="card border-glow" style="max-width: 800px; margin: 0 auto;">
         <h2 class="title-font" style="font-size: 2rem; margin-bottom: 1.5rem; color: #c084fc;">ENTER THE GAME</h2>
-        
+
         <p style="text-align: center; color: #c084fc; margin-bottom: 2rem; font-size: 1.1rem;">
           You will be assigned a player number automatically
         </p>
 
         <button class="btn btn-primary" onclick="joinQueue()">JOIN QUEUE</button>
 
+        <div class="checkbox-container" onclick="toggleAutoPlay()">
+          <input type="checkbox" id="autoplay-checkbox">
+          <label for="autoplay-checkbox">🔄 Auto-play (automatically join next game)</label>
+        </div>
+
+        <div class="info-box">
+          <h4>ACTIVE GAMES:</h4>
+          <div id="games-browser" class="games-browser">
+            <p style="text-align: center; color: #a78bfa; font-size: 0.9rem;">No active games. Start one!</p>
+          </div>
+        </div>
+
         <div class="info-box">
           <h4>HOW TO PLAY:</h4>
           <ul>
-            <li>• Join the queue and wait for other players</li>
+            <li>• Join the queue or spectate an active game</li>
             <li>• You'll be assigned Player 1, Player 2, etc.</li>
             <li>• One AI will join your game as a player</li>
             <li>• Chat naturally - no topics, just conversation</li>
@@ -539,6 +657,62 @@
           <p style="color: #c084fc; margin-bottom: 2rem;">player(s) in queue</p>
           <p style="font-size: 0.9rem; color: #a78bfa; margin-bottom: 2rem;">Game starts when 2+ players are ready</p>
           <button class="btn btn-secondary" onclick="leaveQueue()">LEAVE QUEUE</button>
+        </div>
+      </div>
+
+      <!-- Lobby Waiting Screen -->
+      <div id="lobby-screen" class="card border-glow hidden" style="max-width: 600px; margin: 0 auto;">
+        <div class="lobby-waiting">
+          <div class="queue-spinner"></div>
+          <h2 class="title-font" style="font-size: 2rem; margin-bottom: 1rem; color: #c084fc;">IN LOBBY</h2>
+          <p style="font-size: 1.2rem; margin-bottom: 1.5rem; color: #fcd34d;">You'll join the next game!</p>
+          <div class="queue-count title-font glow" id="lobby-count">0</div>
+          <p style="color: #c084fc; margin-bottom: 2rem;">player(s) waiting</p>
+          <p style="font-size: 0.9rem; color: #a78bfa; margin-bottom: 2rem;">Next game starts when current game ends</p>
+          <button class="btn btn-secondary" onclick="returnToMenu()">LEAVE LOBBY</button>
+        </div>
+      </div>
+
+      <!-- Spectator Screen -->
+      <div id="spectator-screen" class="hidden">
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+          <span class="spectator-badge">👁️ SPECTATING</span>
+          <button class="btn btn-secondary" onclick="returnToMenu()" style="margin-top: 1rem; max-width: 300px; margin-left: auto; margin-right: auto;">LEAVE</button>
+        </div>
+        <div class="game-grid">
+          <!-- Sidebar -->
+          <div class="sidebar">
+            <!-- Timer -->
+            <div class="card border-glow timer-card">
+              <div class="timer-label">
+                <span>⏰</span>
+                <span>TIME REMAINING</span>
+              </div>
+              <div class="timer-display title-font glow" id="spectator-timer-display">5:00</div>
+              <div class="phase-label" id="spectator-phase-label">Conversation Phase</div>
+            </div>
+
+            <!-- Players -->
+            <div class="card border-glow players-card">
+              <h3>
+                <span>👥</span>
+                <span>PLAYERS (<span id="spectator-player-count">0</span>)</span>
+              </h3>
+              <div id="spectator-players-list"></div>
+            </div>
+          </div>
+
+          <!-- Chat -->
+          <div class="card border-glow chat-container">
+            <div class="chat-header">
+              <h3>
+                <span>💬</span>
+                <span>CHAT ROOM</span>
+              </h3>
+              <p class="chat-subtitle">Spectating - read only</p>
+            </div>
+            <div class="chat-messages" id="spectator-chat-messages"></div>
+          </div>
         </div>
       </div>
 
@@ -605,7 +779,7 @@
       <div id="results-screen" class="card border-glow hidden" style="max-width: 700px; margin: 0 auto;">
         <div class="results-card">
           <h2 class="results-title title-font glow" id="results-title">🎉 HUMANS WIN!</h2>
-          
+
           <div class="ai-reveal">
             <p>The AI was:</p>
             <p class="ai-name title-font" id="ai-player-name">Player1234</p>
@@ -614,6 +788,11 @@
           <div class="vote-results">
             <h3>Vote Results:</h3>
             <div id="vote-results-list"></div>
+          </div>
+
+          <div id="autoplay-status" class="hidden" style="margin-top: 2rem; padding: 1rem; background: rgba(139, 92, 246, 0.2); border: 1px solid rgba(139, 92, 246, 0.5); border-radius: 0.5rem;">
+            <p style="color: #c084fc; font-size: 1rem; margin-bottom: 0.5rem;">🔄 Auto-play enabled</p>
+            <p style="color: #a78bfa; font-size: 0.9rem;">Joining next game in <span id="autoplay-countdown">10</span>s...</p>
           </div>
 
           <button class="btn btn-primary" onclick="returnToMenu()" style="margin-top: 2rem;">RETURN TO MENU</button>
@@ -628,6 +807,11 @@
     let hasVoted = false;
     let isTimedOut = false;
     let timeoutCountdown = null;
+    let autoPlayEnabled = false;
+    let autoPlayTimer = null;
+    let currentGamesList = [];
+    let isSpectating = false;
+    let currentLobbyId = null;
 
     // Connect to server
     function connectToServer() {
@@ -638,6 +822,15 @@
 
       socket = io(serverUrl);
 
+      socket.on('player_count_update', ({ count }) => {
+        document.getElementById('online-players').textContent = count;
+      });
+
+      socket.on('games_list', ({ games }) => {
+        currentGamesList = games;
+        updateGamesBrowser(games);
+      });
+
       socket.on('queue_joined', ({ queueSize }) => {
         document.getElementById('queue-count').textContent = queueSize;
         showScreen('queue-screen');
@@ -647,7 +840,39 @@
         document.getElementById('queue-count').textContent = queueSize;
       });
 
+      socket.on('joined_lobby', ({ gameId: lobbyGameId, lobbySize }) => {
+        currentLobbyId = lobbyGameId;
+        document.getElementById('lobby-count').textContent = lobbySize;
+        showScreen('lobby-screen');
+      });
+
+      socket.on('lobby_update', ({ lobbySize }) => {
+        document.getElementById('lobby-count').textContent = lobbySize;
+      });
+
+      socket.on('spectating_game', ({ gameId: specGameId, players, phase, timeRemaining, messages }) => {
+        isSpectating = true;
+        gameId = specGameId;
+        updateSpectatorPlayers(players);
+        updateSpectatorTimer(timeRemaining);
+        document.getElementById('spectator-phase-label').textContent = phase === 'voting' ? 'Voting Phase' : 'Conversation Phase';
+
+        const chatContainer = document.getElementById('spectator-chat-messages');
+        chatContainer.innerHTML = '';
+        messages.forEach(msg => {
+          if (msg.isSystem) {
+            addSpectatorSystemMessage(msg.text);
+          } else {
+            addSpectatorMessage(msg);
+          }
+        });
+
+        showScreen('spectator-screen');
+      });
+
       socket.on('game_started', ({ gameId: id, players, timeRemaining }) => {
+        isSpectating = false;
+        currentLobbyId = null;
         gameId = id;
         updatePlayers(players);
         updateTimer(timeRemaining);
@@ -656,11 +881,19 @@
       });
 
       socket.on('new_message', (message) => {
-        addMessage(message);
+        if (isSpectating) {
+          addSpectatorMessage(message);
+        } else {
+          addMessage(message);
+        }
       });
 
       socket.on('timer_update', ({ timeRemaining }) => {
-        updateTimer(timeRemaining);
+        if (isSpectating) {
+          updateSpectatorTimer(timeRemaining);
+        } else {
+          updateTimer(timeRemaining);
+        }
       });
 
       socket.on('phase_change', ({ phase, timeRemaining }) => {
@@ -678,6 +911,23 @@
 
       socket.on('game_ended', ({ winner, aiPlayer, votes, isTied }) => {
         showResults(winner, aiPlayer, votes, isTied);
+
+        // Handle autoplay
+        if (autoPlayEnabled && !isSpectating) {
+          document.getElementById('autoplay-status').classList.remove('hidden');
+          let countdown = 10;
+          document.getElementById('autoplay-countdown').textContent = countdown;
+
+          autoPlayTimer = setInterval(() => {
+            countdown--;
+            document.getElementById('autoplay-countdown').textContent = countdown;
+
+            if (countdown <= 0) {
+              clearInterval(autoPlayTimer);
+              joinQueue();
+            }
+          }, 1000);
+        }
       });
 
       socket.on('player_disconnected', ({ playerName }) => {
@@ -716,11 +966,68 @@
     }
 
     function showScreen(screenId) {
-      const screens = ['menu-screen', 'queue-screen', 'game-screen', 'results-screen'];
+      const screens = ['menu-screen', 'queue-screen', 'lobby-screen', 'game-screen', 'results-screen', 'spectator-screen'];
       screens.forEach(id => {
         document.getElementById(id).classList.add('hidden');
       });
       document.getElementById(screenId).classList.remove('hidden');
+    }
+
+    function toggleAutoPlay() {
+      autoPlayEnabled = !autoPlayEnabled;
+      document.getElementById('autoplay-checkbox').checked = autoPlayEnabled;
+    }
+
+    function updateGamesBrowser(games) {
+      const container = document.getElementById('games-browser');
+
+      if (games.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #a78bfa; font-size: 0.9rem;">No active games. Start one!</p>';
+        return;
+      }
+
+      container.innerHTML = '';
+      games.forEach(game => {
+        const gameCard = document.createElement('div');
+        gameCard.className = 'game-card';
+
+        const phaseText = game.phase === 'conversation' ? '💬 Chatting' :
+                         game.phase === 'voting' ? '🗳️ Voting' : '📊 Results';
+
+        const mins = Math.floor(game.timeRemaining / 60);
+        const secs = game.timeRemaining % 60;
+        const timeText = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+        gameCard.innerHTML = `
+          <div class="game-card-header">
+            <span class="game-card-title">Game ${game.id}</span>
+            <span style="color: #a78bfa; font-size: 0.85rem;">${phaseText}</span>
+          </div>
+          <div class="game-card-stats">
+            <span>👥 ${game.playerCount} players</span>
+            <span>👁️ ${game.spectatorCount} watching</span>
+            <span>⏰ ${timeText}</span>
+          </div>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+            <button onclick="spectateGame('${game.id}')" style="flex: 1; padding: 0.5rem; background: rgba(251, 191, 36, 0.2); border: 1px solid rgba(251, 191, 36, 0.5); border-radius: 0.25rem; color: #fcd34d; cursor: pointer; font-size: 0.85rem;">
+              👁️ Spectate
+            </button>
+            <button onclick="joinLobby('${game.id}')" style="flex: 1; padding: 0.5rem; background: rgba(139, 92, 246, 0.2); border: 1px solid rgba(139, 92, 246, 0.5); border-radius: 0.25rem; color: #c084fc; cursor: pointer; font-size: 0.85rem;">
+              ⏭️ Join Next (${game.lobbyCount})
+            </button>
+          </div>
+        `;
+
+        container.appendChild(gameCard);
+      });
+    }
+
+    function spectateGame(gameId) {
+      socket.emit('spectate_game', { gameId });
+    }
+
+    function joinLobby(gameId) {
+      socket.emit('join_lobby', { gameId });
     }
 
     function joinQueue() {
@@ -836,11 +1143,68 @@
       showScreen('results-screen');
     }
 
+    function updateSpectatorPlayers(players) {
+      const list = document.getElementById('spectator-players-list');
+      const count = document.getElementById('spectator-player-count');
+      list.innerHTML = '';
+      count.textContent = players.length;
+
+      players.forEach(player => {
+        const div = document.createElement('div');
+        div.className = 'player-item';
+        div.textContent = player.name;
+        list.appendChild(div);
+      });
+    }
+
+    function updateSpectatorTimer(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      document.getElementById('spectator-timer-display').textContent =
+        `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function addSpectatorMessage(message) {
+      const container = document.getElementById('spectator-chat-messages');
+      const div = document.createElement('div');
+      div.className = 'message message-user';
+
+      const time = new Date(message.timestamp).toLocaleTimeString();
+      div.innerHTML = `
+        <div class="message-header">
+          <span class="message-player">${message.player}</span>
+          <span class="message-time">${time}</span>
+        </div>
+        <div class="message-text">${escapeHtml(message.text)}</div>
+      `;
+
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function addSpectatorSystemMessage(text) {
+      const container = document.getElementById('spectator-chat-messages');
+      const div = document.createElement('div');
+      div.className = 'message message-system';
+      div.textContent = text;
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+    }
+
     function returnToMenu() {
       // Reset all game state
       hasVoted = false;
       gameId = null;
       isTimedOut = false;
+      isSpectating = false;
+      currentLobbyId = null;
+
+      // Clear autoplay timer
+      if (autoPlayTimer) {
+        clearInterval(autoPlayTimer);
+        autoPlayTimer = null;
+      }
+      document.getElementById('autoplay-status').classList.add('hidden');
 
       // Clear timeout countdown if active
       if (timeoutCountdown) {
@@ -856,6 +1220,7 @@
 
       // Clear chat messages
       document.getElementById('chat-messages').innerHTML = '';
+      document.getElementById('spectator-chat-messages').innerHTML = '';
 
       // Reset phase label and show chat input
       document.getElementById('phase-label').textContent = 'Conversation Phase';
