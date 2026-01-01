@@ -39,12 +39,12 @@
     }
 
     .grid-bg {
-      background-image: 
+      background-image:
         linear-gradient(rgba(139, 92, 246, 0.1) 1px, transparent 1px),
         linear-gradient(90deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px);
       background-size: 50px 50px;
       min-height: 100vh;
-      padding: 2rem;
+      padding: 1rem;
     }
 
     .scanline {
@@ -65,25 +65,26 @@
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 100%;
       margin: 0 auto;
+      padding: 0 1rem;
     }
 
     .header {
       text-align: center;
-      margin-bottom: 3rem;
+      margin-bottom: 1.5rem;
     }
 
     .header h1 {
-      font-size: 4rem;
+      font-size: 3rem;
       font-weight: 900;
       letter-spacing: 0.1em;
-      margin-bottom: 1rem;
+      margin-bottom: 0.5rem;
     }
 
     .header p {
       color: #c084fc;
-      font-size: 1.2rem;
+      font-size: 1rem;
       letter-spacing: 0.2em;
     }
 
@@ -101,8 +102,8 @@
       background: rgba(15, 23, 42, 0.5);
       backdrop-filter: blur(10px);
       border: 1px solid rgba(139, 92, 246, 0.3);
-      border-radius: 1rem;
-      padding: 2rem;
+      border-radius: 0.75rem;
+      padding: 1rem;
     }
 
     .input-group {
@@ -192,24 +193,27 @@
 
     .game-grid {
       display: grid;
-      grid-template-columns: 300px 1fr;
-      gap: 1.5rem;
+      grid-template-columns: 280px 1fr;
+      gap: 1rem;
+      height: calc(100vh - 2rem);
     }
 
     .sidebar {
       display: flex;
       flex-direction: column;
       gap: 1rem;
+      height: 100%;
     }
 
     .timer-card {
       text-align: center;
+      flex-shrink: 0;
     }
 
     .timer-display {
-      font-size: 3rem;
+      font-size: 2.5rem;
       font-weight: 900;
-      margin: 1rem 0;
+      margin: 0.75rem 0;
     }
 
     .timer-label {
@@ -226,11 +230,19 @@
       margin-top: 0.5rem;
     }
 
+    .players-card {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
     .players-card h3 {
       color: #c084fc;
       font-size: 0.9rem;
       margin-bottom: 1rem;
       letter-spacing: 0.05em;
+      flex-shrink: 0;
     }
 
     .player-item {
@@ -245,21 +257,23 @@
     .chat-container {
       display: flex;
       flex-direction: column;
-      height: 600px;
+      height: 100%;
     }
 
     .chat-header {
-      padding: 1rem;
+      padding: 0.75rem 1rem;
       border-bottom: 1px solid rgba(139, 92, 246, 0.3);
+      flex-shrink: 0;
     }
 
     .chat-header h3 {
       font-weight: bold;
       letter-spacing: 0.05em;
+      font-size: 1rem;
     }
 
     .chat-subtitle {
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       color: #c084fc;
       margin-top: 0.25rem;
     }
@@ -326,8 +340,9 @@
     }
 
     .chat-input {
-      padding: 1rem;
+      padding: 0.75rem 1rem;
       border-top: 1px solid rgba(139, 92, 246, 0.3);
+      flex-shrink: 0;
     }
 
     .input-row {
@@ -369,6 +384,10 @@
 
     .input-row button:hover {
       background: #7c3aed;
+    }
+
+    .vote-card {
+      flex-shrink: 0;
     }
 
     .vote-card h3 {
@@ -584,9 +603,18 @@
       padding: 2rem;
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 1024px) {
       .game-grid {
         grid-template-columns: 1fr;
+        height: auto;
+      }
+
+      .sidebar {
+        height: auto;
+      }
+
+      .chat-container {
+        height: 500px;
       }
 
       .header h1 {
